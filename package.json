@@ -1,0 +1,28 @@
+{
+  "name": "tema-03",
+  "version": "1.0.0",
+  "description": "Tema 03 - API de troca de cartas",
+  "main": "index.js",
+  "scripts": {
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Inatel-S03-20261/Tema-03.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Inatel-S03-20261/Tema-03/issues"
+  },
+  "homepage": "https://github.com/Inatel-S03-20261/Tema-03#readme",
+  "dependencies": {
+    "@prisma/client": "^7.5.0",
+    "dotenv": "^17.3.1",
+    "prisma": "^7.5.0"
+  }
+}

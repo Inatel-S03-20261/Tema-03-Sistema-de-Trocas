@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model SwicthMembers {
+  id            String   @id @default(uuid())
+  userId        String
+  switchId      String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  offeredCards  String[]
+  givedCards    String[]
+  receivedCards String[]
+
+  firstMemberSwitch  Switchs[] @relation("FirstMember")
+  secondMemberSwitch Switchs[] @relation("SecondMember")
+  switchs Switchs[] @relation("SwitchMembers")
+
+  @@index([switchId])
+}
+
+enum SwitchStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+model Switchs {
+  id             String   @id @default(uuid())
+  firstMemberId  String
+  secondMemberId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  status         SwitchStatus
+
+  firstMember   SwicthMembers   @relation("FirstMember", fields: [firstMemberId], references: [id])
+  secondMember  SwicthMembers   @relation("SecondMember", fields: [secondMemberId], references: [id])
+  switchMembers SwicthMembers[] @relation("SwitchMembers")
+
+  @@index([firstMemberId])
+  @@index([secondMemberId])
+  @@index([firstMemberId, secondMemberId])
+}
