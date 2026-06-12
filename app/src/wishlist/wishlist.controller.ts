@@ -66,3 +66,49 @@ export class WishlistController {
   findOne(@Param('id') id: string): Promise<WishlistResponseDto> {
     return this.wishlistService.findOne(id);
   }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Atualizar uma wishlist existente' })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador da wishlist.',
+    schema: { type: 'string', format: 'uuid' },
+  })
+  @ApiOkResponse({
+    description: 'Wishlist atualizada com sucesso.',
+    type: WishlistResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Payload inválido para atualização da wishlist.',
+    type: ValidationErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Wishlist não encontrada.',
+    type: NotFoundResponseDto,
+  })
+  update(
+    @Param('id') id: string,
+    @Body() updateWishlistDto: UpdateWishlistDto,
+  ): Promise<WishlistResponseDto> {
+    return this.wishlistService.update(id, updateWishlistDto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remover uma wishlist' })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador da wishlist.',
+    schema: { type: 'string', format: 'uuid' },
+  })
+  @ApiNoContentResponse({
+    description: 'Wishlist removida com sucesso.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Wishlist não encontrada.',
+    type: NotFoundResponseDto,
+  })
+  delete(@Param('id') id: string): Promise<void> {
+    return this.wishlistService.delete(id);
+  }
+}
