@@ -39,3 +39,40 @@ export class WishlistService {
 
     return wishlist;
   }
+
+  async update(
+    id: string,
+    updateWishlistDto: UpdateWishlistDto,
+  ): Promise<WishlistWithItems> {
+    const existing = await this.prisma.wishlist.findUnique({ where: { id } });
+
+    if (!existing) {
+      throw new NotFoundException(`Wishlist com id "${id}" não encontrada`);
+    }
+
+    const { name, items } = updateWishlistDto;
+
+    return this.prisma.wishlist.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(items !== undefined && {
+          items: {
+            deleteMany: {},
+            create: items,
+          },
+        }),
+      },
+      include: { items: true },
+    });
+  }
+
+  async delete(id: string): Promise<void> {
+    const existing = await this.prisma.wishlist.findUnique({ where: { id } });
+
+    if (!existing) {
+      throw new NotFoundException(`Wishlist com id "${id}" não encontrada`);
+    }
+
+    await this.prisma.wishlist.delete({ where: { id } });
+  }
