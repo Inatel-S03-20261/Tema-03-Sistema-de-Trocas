@@ -1,0 +1,68 @@
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  Patch,
+  Delete,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiCreatedResponse,
+  ApiExtraModels,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
+import { WishlistService } from './wishlist.service';
+import { CreateWishlistDto } from './dto/create-wishlist.dto';
+import { UpdateWishlistDto } from './dto/update-wishlist.dto';
+import { WishlistResponseDto } from './dto/wishlist-response.dto';
+import { NotFoundResponseDto } from '../common/dto/not-found-response.dto';
+import { ValidationErrorResponseDto } from '../common/dto/validation-error-response.dto';
+@ApiTags('Wishlists')
+@ApiExtraModels(WishlistResponseDto)
+@Controller('wishlists')
+export class WishlistController {
+  constructor(private readonly wishlistService: WishlistService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Criar uma nova wishlist' })
+  @ApiCreatedResponse({
+    description: 'Wishlist criada com sucesso.',
+    type: WishlistResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Payload inválido para criação da wishlist.',
+    type: ValidationErrorResponseDto,
+  })
+  create(
+    @Body() createWishlistDto: CreateWishlistDto,
+  ): Promise<WishlistResponseDto> {
+    return this.wishlistService.create(createWishlistDto);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Buscar uma wishlist pelo identificador' })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador da wishlist.',
+    schema: { type: 'string', format: 'uuid' },
+  })
+  @ApiOkResponse({
+    description: 'Wishlist encontrada com sucesso.',
+    type: WishlistResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Wishlist não encontrada.',
+    type: NotFoundResponseDto,
+  })
+  findOne(@Param('id') id: string): Promise<WishlistResponseDto> {
+    return this.wishlistService.findOne(id);
+  }
