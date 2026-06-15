@@ -21,9 +21,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { WishlistService } from './wishlist.service';
-import { CreateWishlistDto } from './dto/create-wishlist.dto';
+import { CreateWishlistDto, WishlistItemDto } from './dto/create-wishlist.dto';
 import { UpdateWishlistDto } from './dto/update-wishlist.dto';
-import { WishlistResponseDto } from './dto/wishlist-response.dto';
+import { WishlistItemResponseDto, WishlistResponseDto } from './dto/wishlist-response.dto';
 import { NotFoundResponseDto } from '../common/dto/not-found-response.dto';
 import { ValidationErrorResponseDto } from '../common/dto/validation-error-response.dto';
 @ApiTags('Wishlists')
@@ -91,6 +91,32 @@ export class WishlistController {
     @Body() updateWishlistDto: UpdateWishlistDto,
   ): Promise<WishlistResponseDto> {
     return this.wishlistService.update(id, updateWishlistDto);
+  }
+
+  @Post(':id/items')
+  @ApiOperation({ summary: 'Adicionar item à wishlist' })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador da wishlist.',
+    schema: { type: 'string', format: 'uuid' },
+  })
+  @ApiCreatedResponse({
+    description: 'Item adicionado com sucesso.',
+    type: WishlistItemResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Payload inválido.',
+    type: ValidationErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Wishlist não encontrada.',
+    type: NotFoundResponseDto,
+  })
+  addItem(
+    @Param('id') id: string,
+    @Body() dto: WishlistItemDto,
+  ): Promise<WishlistItemResponseDto> {
+    return this.wishlistService.addItemToWishlist(id, dto);
   }
 
   @Delete(':id')

@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateWishlistDto } from './dto/create-wishlist.dto';
+import { CreateWishlistDto, WishlistItemDto } from './dto/create-wishlist.dto';
 import { UpdateWishlistDto } from './dto/update-wishlist.dto';
+import { WishlistItemResponseDto } from './dto/wishlist-response.dto';
+import { WishlistItemFactory } from './strategies/wishlist-item.factory';
 import { Wishlist, WishlistItem } from '@prisma/client';
 
 type WishlistWithItems = Wishlist & { items: WishlistItem[] };
@@ -75,4 +77,31 @@ export class WishlistService {
     }
 
     await this.prisma.wishlist.delete({ where: { id } });
+  }
+
+  async addItemToWishlist(
+    wishlistId: string,
+    dto: WishlistItemDto,
+  ): Promise<WishlistItemResponseDto> {
+    const wishlist = await this.prisma.wishlist.findUnique({
+      where: { id: wishlistId },
+    });
+
+    if (!wishlist) {
+      throw new NotFoundException(
+        `Wishlist com id "${wishlistId}" não encontrada`,
+      );
+    }
+
+    WishlistItemFactory.create(dto);
+
+    return this.prisma.wishlistItem.create({
+      data: {
+        wishlistId,
+        itemType: dto.itemType,
+        cardId: dto.cardId ?? null,
+        filterType: dto.filterType ?? null,
+        filterRarity: dto.filterRarity ?? null,
+      },
+    });
   }
