@@ -6,10 +6,9 @@ datasource db {
   provider = "postgresql"
 }
 
-
 enum TradeStatus {
-  OPEN
-  CONCLUDED
+  OPENED
+  COMPLETED
   CANCELLED
 }
 
@@ -20,64 +19,78 @@ enum ProposalStatus {
   CANCELLED
 }
 
-model Trade {
-  id              String      @id @default(uuid())
-  ownerId         String
-  linkedWishlistId String?
-  status          TradeStatus @default(OPEN)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-
-  offeredCards    TradeItem[] @relation("OfferedCards")
-  requestedCards  TradeItem[] @relation("RequestedCards")
-  proposals       TradeProposal[]
-
-  @@index([ownerId])
-}
-
-model TradeItem {
-  id              String @id @default(uuid())
-  cardId          String
-  quantity        Int
-  offeredTradeId  String?
-  requestedTradeId String?
-
-  offeredTrade   Trade? @relation("OfferedCards", fields: [offeredTradeId], references: [id], onDelete: Cascade)
-  requestedTrade Trade? @relation("RequestedCards", fields: [requestedTradeId], references: [id], onDelete: Cascade)
-
-  @@index([offeredTradeId])
-  @@index([requestedTradeId])
-}
-
-model TradeProposal {
-  id         String         @id @default(uuid())
-  tradeId    String
-  proposerId String
-  message    String?
-  status     ProposalStatus @default(PENDING)
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-
-  trade        Trade          @relation(fields: [tradeId], references: [id], onDelete: Cascade)
-  offeredCards ProposalItem[]
-
-  @@index([tradeId])
-}
-
-model ProposalItem {
-  id         String @id @default(uuid())
-  proposalId String
-  cardId     String
-  quantity   Int
-
-  proposal TradeProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-
-  @@index([proposalId])
+enum ProposalItemType {
+  OFFERED
+  REQUESTED
 }
 
 enum WishlistItemType {
   SPECIFIC_CARD
   FILTER
+}
+
+enum TradeItemType {
+  OFFERED
+  REQUESTED
+}
+
+model Trade {
+  id          String      @id @default(uuid())
+  createdBy   String
+  acceptedBy  String?
+  status      TradeStatus @default(OPENED)
+  completedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  items          TradeItem[]
+  tradeProposals TradeProposal[]
+
+  @@index([createdBy])
+  @@index([acceptedBy])
+}
+
+model TradeItem {
+  id         String        @id @default(uuid())
+  tradeId    String
+  cardId     String?
+  quantity   Int
+  wishlistId String?
+  type       TradeItemType
+
+  trade Trade @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([tradeId])
+  @@index([tradeId, type])
+}
+
+model TradeProposal {
+  id         String         @id @default(uuid())
+  proposerId String
+  tradeId    String
+  message    String?
+  status     ProposalStatus @default(PENDING)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  items ProposalItem[]
+  trade Trade          @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([proposerId])
+  @@index([tradeId])
+  @@index([tradeId, proposerId])
+}
+
+model ProposalItem {
+  id         String           @id @default(uuid())
+  proposalId String
+  cardId     String
+  quantity   Int
+  type       ProposalItemType
+
+  proposal TradeProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
 }
 
 model Wishlist {
@@ -103,4 +116,5 @@ model WishlistItem {
   wishlist Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
 
   @@index([wishlistId])
+  @@index([wishlistId, itemType])
 }

@@ -1,0 +1,1 @@
+export const TRADE_REPOSITORY = Symbol('TRADE_REPOSITORY');
