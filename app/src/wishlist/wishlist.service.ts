@@ -105,3 +105,20 @@ export class WishlistService {
       },
     });
   }
+async removeItemFromWishlist(
+  wishlistId: string,
+  itemId: string,
+): Promise<void> {
+  const item = await this.prisma.wishlistItem.findFirst({
+    where: { id: itemId, wishlistId },
+  });
+
+  if (!item) {
+    throw new NotFoundException(
+      Item com id "${itemId}" não encontrado na wishlist "${wishlistId}",
+    );
+  }
+
+  await this.prisma.wishlistItem.delete({ where: { id: itemId } });
+}
+}

@@ -8,5 +8,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [PrismaModule],
   controllers: [WishlistController],
   providers: [WishlistService],
+  exports: [WishlistService],
 })
 export class WishlistModule {}
