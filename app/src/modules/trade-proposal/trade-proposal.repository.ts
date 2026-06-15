@@ -13,8 +13,7 @@ export class TradeProposalRepository {
     linkedWishlistId?: string;
     offeredCards: { cardId: string; quantity: number }[];
   }) {
-    const { proposerId, tradeId, message, linkedWishlistId, offeredCards } =
-      data;
+    const { proposerId, tradeId, message, offeredCards } = data;
 
     const proposal = await this.database.tradeProposal.create({
       data: {
@@ -76,7 +75,10 @@ export class TradeProposalRepository {
 
       await tx.trade.update({
         where: { id: proposal.tradeId },
-        data: { status: TradeStatus.COMPLETED, acceptedBy: proposal.proposerId },
+        data: {
+          status: TradeStatus.COMPLETED,
+          acceptedBy: proposal.proposerId,
+        },
       });
 
       await tx.tradeProposal.updateMany({

@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ProposalItemType, ProposalStatus } from '@prisma/client';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
 import { UpdateTradeProposalDto } from './dto/update-trade-proposal.dto';
@@ -11,6 +7,7 @@ import {
   TradeProposalResponseDto,
 } from './dto/trade-proposal-response.dto';
 import { TradeProposalRepository } from './trade-proposal.repository';
+import { TradeProposalEntity } from './domain/trade-proposal.entity';
 
 @Injectable()
 export class TradeProposalService {
@@ -59,15 +56,11 @@ export class TradeProposalService {
       );
     }
 
-    if (existing.status !== ProposalStatus.PENDING) {
-      throw new ConflictException(
-        `Proposta com status ${existing.status} não pode ser atualizada`,
-      );
-    }
+    const newStatus = this.applyTransition(existing.status, dto.status);
 
     const updated = await this.repository.updateTradeProposalStatus(
       id,
-      dto.status,
+      newStatus,
     );
 
     return this.toResponseDto(updated);
@@ -77,17 +70,33 @@ export class TradeProposalService {
     const existing = await this.repository.findTradeProposalById(proposalId);
 
     if (!existing) {
-      throw new NotFoundException(`TradeProposal com id "${proposalId}" não encontrado`);
-    }
-
-    if (existing.status !== ProposalStatus.PENDING) {
-      throw new ConflictException(
-        `Proposta com status ${existing.status} não pode ser aceita`,
+      throw new NotFoundException(
+        `TradeProposal com id "${proposalId}" não encontrado`,
       );
     }
 
+    new TradeProposalEntity(existing.status).accept();
+
     const updated = await this.repository.acceptProposal(proposalId);
     return this.toResponseDto(updated);
+  }
+
+  private applyTransition(
+    currentStatus: ProposalStatus,
+    targetStatus: ProposalStatus,
+  ): ProposalStatus {
+    const entity = new TradeProposalEntity(currentStatus);
+
+    switch (targetStatus) {
+      case ProposalStatus.ACCEPTED:
+        return entity.accept();
+      case ProposalStatus.REJECTED:
+        return entity.reject();
+      case ProposalStatus.CANCELLED:
+        return entity.cancel();
+      default:
+        return targetStatus;
+    }
   }
 
   async delete(id: string): Promise<void> {
