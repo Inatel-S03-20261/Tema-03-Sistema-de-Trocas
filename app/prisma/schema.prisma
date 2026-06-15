@@ -1,6 +1,5 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -46,4 +45,102 @@ model Switchs {
   @@index([firstMemberId])
   @@index([secondMemberId])
   @@index([firstMemberId, secondMemberId])
+}
+
+enum TradeStatus {
+  OPEN
+  CONCLUDED
+  CANCELLED
+}
+
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+model Trade {
+  id              String      @id @default(uuid())
+  ownerId         String
+  linkedWishlistId String?
+  status          TradeStatus @default(OPEN)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  offeredCards    TradeItem[] @relation("OfferedCards")
+  requestedCards  TradeItem[] @relation("RequestedCards")
+  proposals       TradeProposal[]
+
+  @@index([ownerId])
+}
+
+model TradeItem {
+  id              String @id @default(uuid())
+  cardId          String
+  quantity        Int
+  offeredTradeId  String?
+  requestedTradeId String?
+
+  offeredTrade   Trade? @relation("OfferedCards", fields: [offeredTradeId], references: [id], onDelete: Cascade)
+  requestedTrade Trade? @relation("RequestedCards", fields: [requestedTradeId], references: [id], onDelete: Cascade)
+
+  @@index([offeredTradeId])
+  @@index([requestedTradeId])
+}
+
+model TradeProposal {
+  id         String         @id @default(uuid())
+  tradeId    String
+  proposerId String
+  message    String?
+  status     ProposalStatus @default(PENDING)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  trade        Trade          @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  offeredCards ProposalItem[]
+
+  @@index([tradeId])
+}
+
+model ProposalItem {
+  id         String @id @default(uuid())
+  proposalId String
+  cardId     String
+  quantity   Int
+
+  proposal TradeProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId])
+}
+
+enum WishlistItemType {
+  SPECIFIC_CARD
+  FILTER
+}
+
+model Wishlist {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items WishlistItem[]
+
+  @@index([userId])
+}
+
+model WishlistItem {
+  id           String           @id @default(uuid())
+  wishlistId   String
+  itemType     WishlistItemType
+  cardId       String?
+  filterType   String?
+  filterRarity String?
+
+  wishlist Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+
+  @@index([wishlistId])
 }

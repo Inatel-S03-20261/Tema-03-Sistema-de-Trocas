@@ -2,12 +2,16 @@
   "name": "tema-03",
   "version": "1.0.0",
   "description": "Tema 03 - API de troca de cartas",
-  "main": "index.js",
+  "private": true,
+  "packageManager": "pnpm@10.17.0",
   "scripts": {
-    "migrate:dev": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
-    "db:generate": "prisma generate",
-    "db:studio": "prisma studio"
+    "dev:api": "pnpm --filter app start:dev",
+    "build": "pnpm --filter app build",
+    "test": "pnpm --filter app test",
+    "migrate:dev": "pnpm --filter app migrate:dev",
+    "migrate:deploy": "pnpm --filter app migrate:deploy",
+    "db:generate": "pnpm --filter app db:generate",
+    "db:studio": "pnpm --filter app db:studio"
   },
   "repository": {
     "type": "git",
@@ -20,9 +24,8 @@
     "url": "https://github.com/Inatel-S03-20261/Tema-03/issues"
   },
   "homepage": "https://github.com/Inatel-S03-20261/Tema-03#readme",
-  "dependencies": {
-    "@prisma/client": "^7.5.0",
-    "dotenv": "^17.3.1",
-    "prisma": "^7.5.0"
+  "pnpm": {
+    "onlyBuiltDependencies": ["prisma", "@prisma/engines"],
+    "ignoredBuiltDependencies": ["unrs-resolver"]
   }
 }
