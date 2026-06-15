@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
 import { UpdateTradeProposalDto } from './dto/update-trade-proposal.dto';
@@ -12,6 +8,7 @@ import {
   TradeProposal,
   ProposalItem,
 } from '@prisma/client';
+import { TradeProposalEntity } from './domain/trade-proposal.entity';
 
 type TradeProposalWithItems = TradeProposal & { offeredCards: ProposalItem[] };
 
@@ -72,18 +69,17 @@ export class TradeProposalService {
         `TradeProposal com id "${id}" não encontrado`,
       );
     }
-    if (existing.status !== ProposalStatus.PENDING) {
-      throw new ConflictException(
-        `Proposta com status ${existing.status} não pode ser atualizada`,
-      );
-    }
+
+    const proposal = new TradeProposalEntity(existing.status);
+    const newStatus = this.applyTransition(proposal, dto.status);
+
     const updated = await this.prisma.tradeProposal.update({
       where: { id },
-      data: { status: dto.status },
+      data: { status: newStatus },
       include: { offeredCards: true },
     });
 
-    if (dto.status === ProposalStatus.ACCEPTED) {
+    if (newStatus === ProposalStatus.ACCEPTED) {
       await this.prisma.tradeProposal.updateMany({
         where: {
           tradeId: existing.tradeId,
@@ -100,6 +96,27 @@ export class TradeProposalService {
     }
 
     return updated;
+  }
+
+  /**
+   * Resolves the requested status change through the proposal's current
+   * ProposalState (State pattern). When no status is requested, the
+   * proposal keeps its current status.
+   */
+  private applyTransition(
+    proposal: TradeProposalEntity,
+    status?: ProposalStatus,
+  ): ProposalStatus {
+    switch (status) {
+      case ProposalStatus.ACCEPTED:
+        return proposal.accept();
+      case ProposalStatus.REJECTED:
+        return proposal.reject();
+      case ProposalStatus.CANCELLED:
+        return proposal.cancel();
+      default:
+        return proposal.status;
+    }
   }
 
   async delete(id: string): Promise<void> {
