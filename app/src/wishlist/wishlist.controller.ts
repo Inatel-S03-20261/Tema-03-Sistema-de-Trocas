@@ -118,31 +118,30 @@ export class WishlistController {
   ): Promise<WishlistItemResponseDto> {
     return this.wishlistService.addItemToWishlist(id, dto);
   }
-
- @Delete(':id/items/:itemId')
- @HttpCode(HttpStatus.NO_CONTENT)
- @ApiOperation({ summary: 'Remover item da wishlist' })
- @ApiParam({
-  name: 'id',
-  description: 'Identificador da wishlist.',
-  schema: { type: 'string', format: 'uuid' },
-})
- @ApiParam({
-  name: 'itemId',
-  description: 'Identificador do item.',
-  schema: { type: 'string', format: 'uuid' },
-})
- @ApiNoContentResponse({ description: 'Item removido com sucesso.' })
- @ApiNotFoundResponse({
-  description: 'Wishlist ou item não encontrado.',
-  type: NotFoundResponseDto,
-})
-removeItem(
-  @Param('id') id: string,
-  @Param('itemId') itemId: string,
-): Promise<void> {
-  return this.wishlistService.removeItemFromWishlist(id, itemId);
-}
+@Delete(':id/items/:itemId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remover item da wishlist' })
+  @ApiParam({
+    name: 'id',
+    description: 'Identificador da wishlist.',
+    schema: { type: 'string', format: 'uuid' },
+  })
+  @ApiParam({
+    name: 'itemId',
+    description: 'Identificador do item.',
+    schema: { type: 'string', format: 'uuid' },
+  })
+  @ApiNoContentResponse({ description: 'Item removido com sucesso.' })
+  @ApiNotFoundResponse({
+    description: 'Wishlist ou item não encontrado.',
+    type: NotFoundResponseDto,
+  })
+  removeItem(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+  ): Promise<void> {
+    return this.wishlistService.removeItemFromWishlist(id, itemId);
+  }
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remover uma wishlist' })

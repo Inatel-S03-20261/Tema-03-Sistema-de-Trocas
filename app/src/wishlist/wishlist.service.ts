@@ -115,7 +115,7 @@ async removeItemFromWishlist(
 
   if (!item) {
     throw new NotFoundException(
-      Item com id "${itemId}" não encontrado na wishlist "${wishlistId}",
+      `Item com id "${itemId}" não encontrado na wishlist "${wishlistId}"`,
     );
   }
 
