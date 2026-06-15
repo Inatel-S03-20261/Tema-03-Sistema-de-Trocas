@@ -1,123 +1,108 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Patch,
-  Delete,
-  Body,
-  Param,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiConflictResponse,
-  ApiCreatedResponse,
-  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import { TradesService } from './trades.service';
-import { CreateTradeDto } from './dto/create-trade.dto';
-import { UpdateTradeDto } from './dto/update-trade.dto';
-import { TradeResponseDto } from './dto/trade-response.dto';
+import { AcceptProposalDto } from './dto/accept-proposal.dto';
+import { RejectProposalDto } from './dto/reject-proposal.dto';
+import { CancelProposalDto } from './dto/cancel-proposal.dto';
+import {
+  AcceptProposalResponseDto,
+  CancelProposalResponseDto,
+  RejectProposalResponseDto,
+} from './dto/proposal-action-response.dto';
 import { NotFoundResponseDto } from '../common/dto/not-found-response.dto';
 import { ValidationErrorResponseDto } from '../common/dto/validation-error-response.dto';
 
+/**
+ * Trade controller (TradeController in the v5 diagram) — thin View/HTTP layer: it only
+ * validates the payload (via ValidationPipe + DTOs) and delegates to the TradesService.
+ *
+ * Per v5, the Trade exposes no CRUD: it exists as the result of a proposal's lifecycle
+ * (accept / reject / cancel).
+ */
 @ApiTags('Trades')
 @Controller('trades')
 export class TradesController {
   constructor(private readonly tradesService: TradesService) {}
 
-  @Post()
-  @ApiOperation({ summary: 'Criar uma troca' })
-  @ApiCreatedResponse({
-    description: 'Troca criada com sucesso.',
-    type: TradeResponseDto,
+  @Post('accept')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Aceitar uma proposta e concretizar a troca' })
+  @ApiOkResponse({
+    description: 'Proposta aceita e troca concretizada.',
+    type: AcceptProposalResponseDto,
   })
   @ApiBadRequestResponse({
-    description: 'Payload inválido para criação da troca.',
-    type: ValidationErrorResponseDto,
-  })
-  create(@Body() createTradeDto: CreateTradeDto): Promise<TradeResponseDto> {
-    return this.tradesService.create(createTradeDto);
-  }
-
-  @Get()
-  @ApiOperation({ summary: 'Listar todas as trocas' })
-  @ApiOkResponse({
-    description: 'Lista de trocas.',
-    type: [TradeResponseDto],
-  })
-  findAll(): Promise<TradeResponseDto[]> {
-    return this.tradesService.findAll();
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Buscar uma troca por ID' })
-  @ApiParam({
-    name: 'id',
-    description: 'Identificador da troca.',
-    schema: { type: 'string', format: 'uuid' },
-  })
-  @ApiOkResponse({
-    description: 'Troca encontrada.',
-    type: TradeResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'Troca não encontrada.',
-    type: NotFoundResponseDto,
-  })
-  findOne(@Param('id') id: string): Promise<TradeResponseDto> {
-    return this.tradesService.findOne(id);
-  }
-
-  @Patch(':id')
-  @ApiOperation({ summary: 'Atualizar uma troca' })
-  @ApiParam({
-    name: 'id',
-    description: 'Identificador da troca.',
-    schema: { type: 'string', format: 'uuid' },
-  })
-  @ApiOkResponse({
-    description: 'Troca atualizada.',
-    type: TradeResponseDto,
-  })
-  @ApiBadRequestResponse({
-    description: 'Payload inválido para atualização da troca.',
+    description: 'Payload inválido.',
     type: ValidationErrorResponseDto,
   })
   @ApiNotFoundResponse({
-    description: 'Troca não encontrada.',
+    description: 'Proposta não encontrada.',
     type: NotFoundResponseDto,
   })
   @ApiConflictResponse({
-    description: 'Troca não está com status OPEN.',
+    description: 'Proposta não está com status PENDING.',
   })
-  update(
-    @Param('id') id: string,
-    @Body() updateTradeDto: UpdateTradeDto,
-  ): Promise<TradeResponseDto> {
-    return this.tradesService.update(id, updateTradeDto);
+  async acceptProposal(
+    @Body() dto: AcceptProposalDto,
+  ): Promise<AcceptProposalResponseDto> {
+    const proposal = await this.tradesService.acceptProposal(dto.tradeId);
+    return { proposal };
   }
 
-  @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Remover uma troca' })
-  @ApiParam({
-    name: 'id',
-    description: 'Identificador da troca.',
-    schema: { type: 'string', format: 'uuid' },
+  @Post('reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rejeitar uma proposta' })
+  @ApiOkResponse({
+    description: 'Proposta rejeitada.',
+    type: RejectProposalResponseDto,
   })
-  @ApiNoContentResponse({ description: 'Troca removida.' })
+  @ApiBadRequestResponse({
+    description: 'Payload inválido.',
+    type: ValidationErrorResponseDto,
+  })
   @ApiNotFoundResponse({
-    description: 'Troca não encontrada.',
+    description: 'Proposta não encontrada.',
     type: NotFoundResponseDto,
   })
-  delete(@Param('id') id: string): Promise<void> {
-    return this.tradesService.delete(id);
+  @ApiConflictResponse({
+    description: 'Proposta não está com status PENDING.',
+  })
+  async rejectProposal(
+    @Body() dto: RejectProposalDto,
+  ): Promise<RejectProposalResponseDto> {
+    const proposal = await this.tradesService.rejectProposal(dto.tradeId);
+    return { proposal };
+  }
+
+  @Post('cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancelar uma proposta' })
+  @ApiOkResponse({
+    description: 'Proposta cancelada.',
+    type: CancelProposalResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Payload inválido.',
+    type: ValidationErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Proposta não encontrada.',
+    type: NotFoundResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Proposta não está com status PENDING.',
+  })
+  async cancelProposal(
+    @Body() dto: CancelProposalDto,
+  ): Promise<CancelProposalResponseDto> {
+    const proposal = await this.tradesService.cancelProposal(dto.tradeId);
+    return { proposal };
   }
 }
