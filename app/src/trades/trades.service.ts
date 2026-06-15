@@ -1,97 +1,83 @@
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
-import { Trade, TradeItem, TradeStatus } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateTradeDto } from './dto/create-trade.dto';
-import { UpdateTradeDto } from './dto/update-trade.dto';
+  IProposalRepository,
+  PROPOSAL_REPOSITORY,
+} from './repositories/proposal.repository';
+import {
+  ITradeRepository,
+  TRADE_REPOSITORY,
+} from './repositories/trade.repository';
+import { EVENT_PUBLISHER, IEventPublisher } from '../events/event.contracts';
+import { TradeFactory } from './factories/trade.factory';
+import { TradeProposal } from './domain/trade-proposal.entity';
 
-export type TradeWithCards = Trade & {
-  offeredCards: TradeItem[];
-  requestedCards: TradeItem[];
-};
-
+/**
+ * Trade service layer — orchestrates the v5 use cases: accept, reject and cancel a proposal.
+ *
+ * SOLID in action:
+ *  - Depends on ABSTRACTIONS (repositories and publisher) injected by token (DIP).
+ *  - Knows nothing about Prisma or the EventEmitter (low coupling).
+ *  - Building the Trade lives in the TradeFactory and state transitions live in the
+ *    TradeProposal itself (SRP): the service only coordinates the flow.
+ *  - Side effects (e.g. Wishlist) come in via event subscription, without changing this
+ *    service (OCP).
+ */
 @Injectable()
 export class TradesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PROPOSAL_REPOSITORY)
+    private readonly proposalRepo: IProposalRepository,
+    @Inject(TRADE_REPOSITORY)
+    private readonly tradeRepo: ITradeRepository,
+    @Inject(EVENT_PUBLISHER)
+    private readonly eventBus: IEventPublisher,
+    private readonly tradeFactory: TradeFactory,
+  ) {}
 
-  async create(dto: CreateTradeDto): Promise<TradeWithCards> {
-    const { ownerId, linkedWishlistId, offeredCards, requestedCards } = dto;
+  /**
+   * Accepts the proposal and settles the trade: transitions the proposal, builds the Trade
+   * via the factory, persists both and publishes the ProposalAccepted event.
+   */
+  async acceptProposal(proposalId: string): Promise<TradeProposal> {
+    const proposal = await this.getProposalOrFail(proposalId);
 
-    return this.prisma.trade.create({
-      data: {
-        ownerId,
-        linkedWishlistId: linkedWishlistId ?? null,
-        offeredCards: {
-          create: offeredCards,
-        },
-        requestedCards: {
-          create: requestedCards,
-        },
-      },
-      include: { offeredCards: true, requestedCards: true },
-    });
+    const event = proposal.accept();
+    await this.proposalRepo.save(proposal);
+
+    const trade = this.tradeFactory.fromAcceptedProposal(proposal);
+    await this.tradeRepo.save(trade);
+
+    this.eventBus.publish(event);
+    return proposal;
   }
 
-  async findOne(id: string): Promise<TradeWithCards> {
-    const trade = await this.prisma.trade.findUnique({
-      where: { id },
-      include: { offeredCards: true, requestedCards: true },
-    });
+  /** Rejects the proposal and publishes the ProposalRejected event. */
+  async rejectProposal(proposalId: string): Promise<TradeProposal> {
+    const proposal = await this.getProposalOrFail(proposalId);
 
-    if (!trade) {
-      throw new NotFoundException(`Trade com id "${id}" não encontrado`);
-    }
+    const event = proposal.reject();
+    await this.proposalRepo.save(proposal);
 
-    return trade;
+    this.eventBus.publish(event);
+    return proposal;
   }
 
-  async findAll(): Promise<TradeWithCards[]> {
-    return this.prisma.trade.findMany({
-      include: { offeredCards: true, requestedCards: true },
-    });
+  /** Cancels the proposal and publishes the ProposalCancelled event. */
+  async cancelProposal(proposalId: string): Promise<TradeProposal> {
+    const proposal = await this.getProposalOrFail(proposalId);
+
+    const event = proposal.cancel();
+    await this.proposalRepo.save(proposal);
+
+    this.eventBus.publish(event);
+    return proposal;
   }
 
-  async update(id: string, dto: UpdateTradeDto): Promise<TradeWithCards> {
-    const existing = await this.prisma.trade.findUnique({ where: { id } });
-
-    if (!existing) {
-      throw new NotFoundException(`Trade com id "${id}" não encontrado`);
+  private async getProposalOrFail(id: string): Promise<TradeProposal> {
+    const proposal = await this.proposalRepo.findById(id);
+    if (!proposal) {
+      throw new NotFoundException(`Proposta com id "${id}" não encontrada`);
     }
-
-    if (existing.status !== TradeStatus.OPEN) {
-      throw new ConflictException(
-        `Troca com status ${existing.status} não pode ser atualizada`,
-      );
-    }
-
-    const { status, linkedWishlistId, offeredCards, requestedCards } = dto;
-
-    return this.prisma.trade.update({
-      where: { id },
-      data: {
-        ...(status !== undefined && { status }),
-        ...(linkedWishlistId !== undefined && { linkedWishlistId }),
-        ...(offeredCards !== undefined && {
-          offeredCards: { deleteMany: {}, create: offeredCards },
-        }),
-        ...(requestedCards !== undefined && {
-          requestedCards: { deleteMany: {}, create: requestedCards },
-        }),
-      },
-      include: { offeredCards: true, requestedCards: true },
-    });
-  }
-
-  async delete(id: string): Promise<void> {
-    const existing = await this.prisma.trade.findUnique({ where: { id } });
-
-    if (!existing) {
-      throw new NotFoundException(`Trade com id "${id}" não encontrado`);
-    }
-
-    await this.prisma.trade.delete({ where: { id } });
+    return proposal;
   }
 }
