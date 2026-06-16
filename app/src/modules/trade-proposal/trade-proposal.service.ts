@@ -1,9 +1,10 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ProposalItemType, ProposalStatus } from '@prisma/client';
+import { ProposalItemType, ProposalStatus, TradeItemType } from '@prisma/client';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
 import { UpdateTradeProposalDto } from './dto/update-trade-proposal.dto';
 import {
@@ -12,10 +13,16 @@ import {
 } from './dto/trade-proposal-response.dto';
 import { TradeProposalRepository } from './trade-proposal.repository';
 import { TradeProposalEntity } from './domain/trade-proposal.entity';
+import { EVENT_PUBLISHER } from '../../providers/events/event.contracts';
+import type { IEventPublisher } from '../../providers/events/event.contracts';
+import { TradeCompleted } from '../../providers/events/trade.events';
 
 @Injectable()
 export class TradeProposalService {
-  constructor(private readonly repository: TradeProposalRepository) {}
+  constructor(
+    private readonly repository: TradeProposalRepository,
+    @Inject(EVENT_PUBLISHER) private readonly eventPublisher: IEventPublisher,
+  ) {}
 
   async create(dto: CreateTradeProposalDto): Promise<TradeProposalResponseDto> {
     const { proposerId, tradeId, message, offeredCards } = dto;
@@ -81,8 +88,23 @@ export class TradeProposalService {
 
     new TradeProposalEntity(existing.status).accept();
 
-    const updated = await this.repository.acceptProposal(proposalId);
-    return this.toResponseDto(updated);
+    const { proposal, trade } = await this.repository.acceptProposal(proposalId);
+
+    this.eventPublisher.publish(
+      new TradeCompleted(
+        trade.id,
+        trade.createdBy,
+        proposal.proposerId,
+        trade.items
+          .filter((i) => i.type === TradeItemType.OFFERED)
+          .map((i) => ({ cardId: i.cardId!, quantity: i.quantity })),
+        proposal.items
+          .filter((i) => i.type === ProposalItemType.OFFERED)
+          .map((i) => ({ cardId: i.cardId, quantity: i.quantity })),
+      ),
+    );
+
+    return this.toResponseDto(proposal);
   }
 
   private applyTransition(

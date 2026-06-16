@@ -73,12 +73,13 @@ export class TradeProposalRepository {
         include: { items: true },
       });
 
-      await tx.trade.update({
+      const trade = await tx.trade.update({
         where: { id: proposal.tradeId },
         data: {
           status: TradeStatus.COMPLETED,
           acceptedBy: proposal.proposerId,
         },
+        include: { items: true },
       });
 
       await tx.tradeProposal.updateMany({
@@ -90,7 +91,7 @@ export class TradeProposalRepository {
         data: { status: ProposalStatus.CANCELLED },
       });
 
-      return proposal;
+      return { proposal, trade };
     });
   }
 }
