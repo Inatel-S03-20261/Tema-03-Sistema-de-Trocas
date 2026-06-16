@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ProposalItemType, ProposalStatus } from '@prisma/client';
 import { CreateTradeProposalDto } from './dto/create-trade-proposal.dto';
 import { UpdateTradeProposalDto } from './dto/update-trade-proposal.dto';
@@ -88,14 +92,14 @@ export class TradeProposalService {
     const entity = new TradeProposalEntity(currentStatus);
 
     switch (targetStatus) {
-      case ProposalStatus.ACCEPTED:
-        return entity.accept();
       case ProposalStatus.REJECTED:
         return entity.reject();
       case ProposalStatus.CANCELLED:
         return entity.cancel();
       default:
-        return targetStatus;
+        throw new ConflictException(
+          `Transição para status ${targetStatus} não é permitida por este endpoint`,
+        );
     }
   }
 
