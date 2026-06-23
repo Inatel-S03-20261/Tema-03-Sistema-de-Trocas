@@ -67,6 +67,7 @@ export class WishlistController {
   }
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Deletar uma wishlist pelo identificador' })
   delete(@Param('id') id: string): Promise<void> {
     return this.wishlistService.delete(id);
   }
