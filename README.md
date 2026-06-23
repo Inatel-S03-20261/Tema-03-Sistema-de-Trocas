@@ -37,7 +37,7 @@ app/src/
 │   │   └── trade-proposal.service.ts
 │   ├── trades/                 # Trocas
 │   │   ├── dto/
-│   │   ├── repositories/       # Repository Pattern
+│   │   ├── repositories/       # Adapter Pattern (GoF)
 │   │   ├── trades.controller.ts
 │   │   ├── trades.repository.ts
 │   │   └── trades.service.ts
@@ -117,15 +117,36 @@ filter.matches('any-card-id'); // true (matching por tipo/raridade requer objeto
 - Fácil extensão com novos tipos de item
 - Separação clara entre lógica de matching e lógica de persistência
 
-### 4. Repository Pattern
-**Localização**: `modules/trades/repositories/` e repositórios por módulo
+### 4. Adapter Pattern (GoF)
+**Localização**: `modules/trades/`
 
-Abstrai o acesso ao banco de dados, isolando o Prisma Client dos serviços de negócio.
+Aplicado na entidade de **Trocas**. O `TradesRepository` atua como **Adapter**: ele converte a interface do Prisma (`DatabaseService`, que estende `PrismaClient`) na interface orientada ao domínio esperada pelo `TradesService`. Assim, o serviço de negócio nunca conhece o Prisma — ele conversa apenas com o contrato `create` / `findById` / `cancel`, e o adapter traduz cada chamada para o cliente de persistência.
+
+**Papéis do padrão (GoF)**:
+
+| Papel | Implementação |
+|---|---|
+| **Client** (usa a interface esperada) | `TradesService` |
+| **Target** (interface esperada pelo cliente) | contrato `ITradeRepository` (`TRADE_REPOSITORY`) |
+| **Adapter** (converte a chamada) | `TradesRepository` |
+| **Adaptee** (interface incompatível/externa) | `DatabaseService` / Prisma Client |
+
+```typescript
+// O serviço fala a interface do domínio (Target)...
+await this.tradesRepository.cancel(id);
+
+// ...e o Adapter (TradesRepository) traduz para a interface do Prisma (Adaptee)
+this.db.trade.update({ where: { id }, data: { status: TradeStatus.CANCELLED } });
+this.db.tradeProposal.updateMany({
+  where: { tradeId: id, status: ProposalStatus.PENDING },
+  data: { status: ProposalStatus.CANCELLED },
+});
+```
 
 **Benefícios**:
-- Serviços não dependem diretamente do Prisma
-- Facilita substituição da camada de persistência
-- Centraliza queries e operações transacionais
+- Desacopla o domínio da tecnologia de persistência: o serviço não depende diretamente do Prisma
+- Permite trocar o "adaptee" (outro ORM/banco) sem alterar o `TradesService`
+- Concentra no adapter a tradução entre o vocabulário do domínio e a API do Prisma (incluindo operações transacionais)
 
 ## Pré-requisitos
 
